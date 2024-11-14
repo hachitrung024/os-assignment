@@ -6,7 +6,7 @@
 
 #include "mm.h"
 #include <stdlib.h>
-
+#include <stdio.h>
 /*
  *  MEMPHY_mv_csr - move MEMPHY cursor
  *  @mp: memphy struct
@@ -137,6 +137,11 @@ int MEMPHY_format(struct memphy_struct *mp, int pagesz)
     return 0;
 }
 
+/*
+ *  MEMPHY_get_freefp-get a free frame page
+ *  @mp: memphy struct
+ *  @retfpn: return fpn of frame page
+ */
 int MEMPHY_get_freefp(struct memphy_struct *mp, int *retfpn)
 {
    struct framephy_struct *fp = mp->free_fp_list;
@@ -154,14 +159,21 @@ int MEMPHY_get_freefp(struct memphy_struct *mp, int *retfpn)
 
    return 0;
 }
-
+/*
+ *  MEMPHY_dump-dump memphy content
+ *  @mp: memphy struct
+ */
 int MEMPHY_dump(struct memphy_struct * mp)
 {
-    /*TODO dump memphy contnt mp->storage 
+    /*TODO dump memphy content mp->storage 
      *     for tracing the memory content
      */
-
-    return 0;
+   if(mp == NULL || mp->storage == NULL) return -1;
+   printf("MEMPHY_dump:\n");
+   for(int i = 0; i< mp->maxsz; i++){
+      printf("Address %d: %d\n", i, mp->storage[i]);
+   }
+   return 0;
 }
 
 int MEMPHY_put_freefp(struct memphy_struct *mp, int fpn)
