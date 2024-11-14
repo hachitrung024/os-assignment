@@ -1,9 +1,0 @@
-{
-    "files.associations": {
-        "stdlib.h": "c",
-        "mem.h": "c",
-        "mm.h": "c",
-        "queue.h": "c",
-        "common.h": "c"
-    }
-}

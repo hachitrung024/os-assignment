@@ -170,9 +170,9 @@ int MEMPHY_dump(struct memphy_struct * mp)
      */
    if(mp == NULL || mp->storage == NULL) return -1;
    printf("MEMPHY_dump:\n");
-   for(int i = 0; i< mp->maxsz; i++){
-      printf("Address %d: %d\n", i, mp->storage[i]);
-   }
+   // for(int i = 0; i< mp->maxsz; i++){
+   //    printf("Address %d: %d\n", i, mp->storage[i]);
+   // }
    return 0;
 }
 
