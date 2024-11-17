@@ -1,4 +1,3 @@
-
 #include "mem.h"
 #include "stdlib.h"
 #include "string.h"
@@ -9,11 +8,12 @@ static BYTE _ram[RAM_SIZE];
 
 static struct {
 	uint32_t proc;	// ID of process currently uses this page
+					//(ID tien trinh dang su dung khung (frame) nay)
 	int index;	// Index of the page in the list of pages allocated
-			// to the process.
+			// to the process. (Chi so cua trang (tuong ung voi khung) trong danh sach trang duoc cap cho tien trinh)	
 	int next;	// The next page in the list. -1 if it is the last
-			// page.
-} _mem_stat [NUM_PAGES];
+			// page.  (Chi so cua khung tiep theo ma tien trinh su dung)
+} _mem_stat [NUM_PAGES]; // Quan ly trang thai cac khung cua ram
 
 static pthread_mutex_t mem_lock;
 
@@ -48,6 +48,9 @@ static struct trans_table_t * get_trans_table(
 	int i;
 	for (i = 0; i < page_table->size; i++) {
 		// Enter your code here
+		if(page_table->table[i].v_index  == index){
+			return page_table[i].next_lv;
+		}
 	}
 	return NULL;
 

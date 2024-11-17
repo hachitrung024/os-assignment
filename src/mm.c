@@ -9,34 +9,34 @@
 #include <stdio.h>
 
 /* 
- * init_pte - Initialize PTE entry
+ * init_pte - Initialize PTE entry  (Them mot muc vao bang trang)
  */
-int init_pte(uint32_t *pte,
-             int pre,    // present
-             int fpn,    // FPN
-             int drt,    // dirty
-             int swp,    // swap
-             int swptyp, // swap type
-             int swpoff) //swap offset
+int init_pte(uint32_t *pte, //Mot muc trong bang phan trang
+             int pre,    // present (Kiem tra trang thai hien tai dang o bo nho ao khong)
+             int fpn,    // FPN  (Chi so khung trang vat ly)
+             int drt,    // dirty (Xac dinh du lieu da duoc chinh sua chua)
+             int swp,    // swap (Trang co dang o trang thai swap)
+             int swptyp, // swap type (Loai thiet bi hoan doi dang chua trang)
+             int swpoff) //swap offset (Vi tri trong thiet bi hoan doi)
 {
-  if (pre != 0) {
+  if (pre != 0) { // Co trong bo nho ao
     if (swp == 0) { // Non swap ~ page online
       if (fpn == 0) 
         return -1; // Invalid setting
 
       /* Valid setting with FPN */
-      SETBIT(*pte, PAGING_PTE_PRESENT_MASK);
-      CLRBIT(*pte, PAGING_PTE_SWAPPED_MASK);
-      CLRBIT(*pte, PAGING_PTE_DIRTY_MASK);
+      SETBIT(*pte, PAGING_PTE_PRESENT_MASK); // Danh dau trang hien dien
+      CLRBIT(*pte, PAGING_PTE_SWAPPED_MASK); // Xoa co swaped 
+      CLRBIT(*pte, PAGING_PTE_DIRTY_MASK); // Xoa co dirty
 
-      SETVAL(*pte, fpn, PAGING_PTE_FPN_MASK, PAGING_PTE_FPN_LOBIT); 
+      SETVAL(*pte, fpn, PAGING_PTE_FPN_MASK, PAGING_PTE_FPN_LOBIT); // Gan khung vat ly
     } else { // page swapped
-      SETBIT(*pte, PAGING_PTE_PRESENT_MASK);
-      SETBIT(*pte, PAGING_PTE_SWAPPED_MASK);
-      CLRBIT(*pte, PAGING_PTE_DIRTY_MASK);
+      SETBIT(*pte, PAGING_PTE_PRESENT_MASK);// Danh dau trang hien dien
+      SETBIT(*pte, PAGING_PTE_SWAPPED_MASK); // Gan co dang hoan doi
+      CLRBIT(*pte, PAGING_PTE_DIRTY_MASK);  // Xoa co dirty
 
-      SETVAL(*pte, swptyp, PAGING_PTE_SWPTYP_MASK, PAGING_PTE_SWPTYP_LOBIT); 
-      SETVAL(*pte, swpoff, PAGING_PTE_SWPOFF_MASK, PAGING_PTE_SWPOFF_LOBIT);
+      SETVAL(*pte, swptyp, PAGING_PTE_SWPTYP_MASK, PAGING_PTE_SWPTYP_LOBIT); // Gan thiet bi hoan doi
+      SETVAL(*pte, swpoff, PAGING_PTE_SWPOFF_MASK, PAGING_PTE_SWPOFF_LOBIT); // Gan offset hoan doi
     }
   }
 
@@ -49,7 +49,7 @@ int init_pte(uint32_t *pte,
  * @swptyp : swap type
  * @swpoff : swap offset
  */
-int pte_set_swap(uint32_t *pte, int swptyp, int swpoff)
+int pte_set_swap(uint32_t *pte, int swptyp, int swpoff) // Thiet lap PTE cho trang ao bi swaped
 {
   SETBIT(*pte, PAGING_PTE_PRESENT_MASK);
   SETBIT(*pte, PAGING_PTE_SWAPPED_MASK);
@@ -65,7 +65,7 @@ int pte_set_swap(uint32_t *pte, int swptyp, int swpoff)
  * @pte   : target page table entry (PTE)
  * @fpn   : frame page number (FPN)
  */
-int pte_set_fpn(uint32_t *pte, int fpn)
+int pte_set_fpn(uint32_t *pte, int fpn)  // Thiet lap mot pte cho trang ao trong bo nho vat ly
 {
   SETBIT(*pte, PAGING_PTE_PRESENT_MASK);
   CLRBIT(*pte, PAGING_PTE_SWAPPED_MASK);
@@ -79,11 +79,11 @@ int pte_set_fpn(uint32_t *pte, int fpn)
 /* 
  * vmap_page_range - map a range of page at aligned address
  */
-int vmap_page_range(struct pcb_t *caller, // process call
-                                int addr, // start address which is aligned to pagesz
-                               int pgnum, // num of mapping page
-           struct framephy_struct *frames,// list of the mapped frames
-              struct vm_rg_struct *ret_rg)// return mapped region, the real mapped fp
+int vmap_page_range(struct pcb_t *caller, // process call  (Tien trinh yeu cau anh xa)
+                                int addr, // start address which is aligned to pagesz (Dia chi bat dau)
+                               int pgnum, // num of mapping page (So luong trang can anh xa)
+           struct framephy_struct *frames,// list of the mapped frames (Danh sach khung trang vat ly duoc anh xa)
+              struct vm_rg_struct *ret_rg)// return mapped region, the real mapped fp (Tra ve vung anh xa)
 {                                         // no guarantee all given pages are mapped
   //uint32_t * pte = malloc(sizeof(uint32_t));
   struct framephy_struct *fpit = malloc(sizeof(struct framephy_struct));
@@ -91,11 +91,11 @@ int vmap_page_range(struct pcb_t *caller, // process call
   int pgit = 0;
   int pgn = PAGING_PGN(addr);
 
-  /* TODO: update the rg_end and rg_start of ret_rg 
+  // TODO: update the rg_end and rg_start of ret_rg 
   //ret_rg->rg_end =  ....
   //ret_rg->rg_start = ...
   //ret_rg->vmaid = ...
-  */
+  
 
   fpit->fp_next = frames;
 

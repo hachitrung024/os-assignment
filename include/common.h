@@ -49,20 +49,22 @@ struct code_seg_t {
 
 struct trans_table_t {
 	/* A row in the page table of the second layer */
+	/* Bang chuyen doi tu dia chi ao sang dia chi vat ly */
 	struct  {
-		addr_t v_index; // The index of virtual address
-		addr_t p_index; // The index of physical address
-	} table[1 << SECOND_LV_LEN];
-	int size;
+		addr_t v_index; // The index of virtual address (Chi so cua trang ao)
+		addr_t p_index; // The index of physical address (Chi so khung trang vat ly)
+	} table[1 << SECOND_LV_LEN]; // Cac muc trong bang anh xa
+	int size; // So luong muc trong trang
 };
 
 /* Mapping virtual addresses and physical ones */
 struct page_table_t {
 	/* Translation table for the first layer */
+	/* Bang anh xa tu vung bo nho den trang chuyen doi */
 	struct {
-		addr_t v_index;	// Virtual index
-		struct trans_table_t * next_lv;
-	} table[1 << FIRST_LV_LEN];
+		addr_t v_index;	// Virtual index (Chi so ao cua vung bo nho ,segment)
+		struct trans_table_t * next_lv; // Mang chua cac muc, moi muc la mot bang anh xa trans_table_t tuong ung 1 segment
+	} table[1 << FIRST_LV_LEN]; // Cac muc trong vung bo nho
 	int size;	// Number of row in the first layer
 };
 
