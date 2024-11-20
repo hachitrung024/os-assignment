@@ -50,7 +50,7 @@ int init_pte(uint32_t *pte, //Mot muc trong bang phan trang
  * @swpoff : swap offset
  */
 int pte_set_swap(uint32_t *pte, int swptyp, int swpoff) // Thiet lap PTE cho trang ao bi swaped
-{
+{	
   SETBIT(*pte, PAGING_PTE_PRESENT_MASK);
   SETBIT(*pte, PAGING_PTE_SWAPPED_MASK);
 
@@ -77,7 +77,7 @@ int pte_set_fpn(uint32_t *pte, int fpn)  // Thiet lap mot pte cho trang ao trong
 
 
 /* 
- * vmap_page_range - map a range of page at aligned address
+ * vmap_page_range - map a range of page at aligned address (Anh xa pham vi cac trang vao dia chi da can chinh)
  */
 int vmap_page_range(struct pcb_t *caller, // process call  (Tien trinh yeu cau anh xa)
                                 int addr, // start address which is aligned to pagesz (Dia chi bat dau)
@@ -86,28 +86,36 @@ int vmap_page_range(struct pcb_t *caller, // process call  (Tien trinh yeu cau a
               struct vm_rg_struct *ret_rg)// return mapped region, the real mapped fp (Tra ve vung anh xa)
 {                                         // no guarantee all given pages are mapped
   //uint32_t * pte = malloc(sizeof(uint32_t));
-  struct framephy_struct *fpit = malloc(sizeof(struct framephy_struct));
+  // struct framephy_struct *fpit = malloc(sizeof(struct framephy_struct));
+  struct framephy_struct *fpit = frames;
+
   //int  fpn;
-  int pgit = 0;
-  int pgn = PAGING_PGN(addr);
+  int pgit = 0; // Bien lap qua tung trang
+  int pgn = PAGING_PGN(addr); // Chi so trang ao bat dau
 
-  // TODO: update the rg_end and rg_start of ret_rg 
-  //ret_rg->rg_end =  ....
-  //ret_rg->rg_start = ...
-  //ret_rg->vmaid = ...
-  
 
-  fpit->fp_next = frames;
+    /* TODO: update the rg_end and rg_start of ret_rg 
+  */
+  ret_rg->rg_start = addr;
+  ret_rg->rg_end =  addr + pgnum * PAGE_SIZE;
+  ret_rg->vmaid = caller->mm->mmap->vm_id;
 
+  // fpit->fp_next = frames;
+  // struct framephy_struct * dummy = fpit;
+  // fpit=fpit->fp_next;
   /* TODO map range of frame to address space 
    *      in page table pgd in caller->mm
    */
-
+  for (;pgit < pgnum; pgit ++) {
+    uint32_t * pte = &caller->mm->pgd[pgn + pgit];  // Lay pte cua trang hien tai (pgit)
+    int fpn = fpit->fpn;
+    pte_set_fpn(pte, fpn); // Anh xa so trang voi khung trang
+    fpit = fpit->fp_next;
+  }
    /* Tracking for later page replacement activities (if needed)
     * Enqueue new usage page */
-   enlist_pgn_node(&caller->mm->fifo_pgn, pgn+pgit);
-
-
+  enlist_pgn_node(&caller->mm->fifo_pgn, pgn+pgit);
+  // free(dummy);
   return 0;
 }
 
@@ -118,22 +126,30 @@ int vmap_page_range(struct pcb_t *caller, // process call  (Tien trinh yeu cau a
  * @frm_lst   : frame list
  */
 
-int alloc_pages_range(struct pcb_t *caller, int req_pgnum, struct framephy_struct** frm_lst)
+int alloc_pages_range(struct pcb_t *caller, int req_pgnum, struct framephy_struct** frm_lst)	// Cap phat mot pham vi cac khung trang trong ram
 {
   int pgit, fpn;
-  //struct framephy_struct *newfp_str;
+  struct framephy_struct *newfp_str;
 
 
   /* TODO: allocate the page 
   //caller-> ...
   //frm_lst-> ...
   */
+  
   for(pgit = 0; pgit < req_pgnum; pgit++)
   {
     if(MEMPHY_get_freefp(caller->mram, &fpn) == 0)
    {
-     
+    //Lay them khung trang tu danh sach co san
+     newfp_str = caller->mram->free_fp_list;
+     caller->mram->free_fp_list = newfp_str->fp_next;	// Dua con tro toi khung trang free ke tiep
+    //Gan so khung trang vao newfp, va lien ket vao danh sach
+    newfp_str->fpn = fpn; 
+    newfp_str->fp_next = *frm_lst;
+    *frm_lst = newfp_str;
    } else {  // ERROR CODE of obtaining somes but not enough frames
+      return -1;
    } 
  }
 
@@ -142,7 +158,7 @@ int alloc_pages_range(struct pcb_t *caller, int req_pgnum, struct framephy_struc
 
 
 /* 
- * vm_map_ram - do the mapping all vm are to ram storage device
+ * vm_map_ram - do the mapping all vm are to ram storage device			(Thuc hien anh xa tat ca vung ao vao thiet bi luu tru trang)
  * @caller    : caller
  * @astart    : vm area start
  * @aend      : vm area end
@@ -162,7 +178,7 @@ int vm_map_ram(struct pcb_t *caller, int astart, int aend, int mapstart, int inc
    *in endless procedure of swap-off to get frame and we have not provide 
    *duplicate control mechanism, keep it simple
    */
-  ret_alloc = alloc_pages_range(caller, incpgnum, &frm_lst);
+  ret_alloc = alloc_pages_range(caller, incpgnum, &frm_lst);	// Cap phat khung trang vat li can thiet	
 
   if (ret_alloc < 0 && ret_alloc != -3000)
     return -1;
@@ -183,7 +199,7 @@ int vm_map_ram(struct pcb_t *caller, int astart, int aend, int mapstart, int inc
   return 0;
 }
 
-/* Swap copy content page from source frame to destination frame 
+/* Swap copy content page from source frame to destination frame  (Sao chep noi dung cua mot trang tu khung trang nguon sang dich trong qua trinh swap)
  * @mpsrc  : source memphy
  * @srcfpn : source physical page number (FPN)
  * @mpdst  : destination memphy
@@ -200,25 +216,26 @@ int __swap_cp_page(struct memphy_struct *mpsrc, int srcfpn,
     addrdst = dstfpn * PAGING_PAGESZ + cellidx;
 
     BYTE data;
-    MEMPHY_read(mpsrc, addrsrc, &data);
-    MEMPHY_write(mpdst, addrdst, data);
+    MEMPHY_read(mpsrc, addrsrc, &data);	// Doc du lieu tu khung trang nguon
+    MEMPHY_write(mpdst, addrdst, data); // Ghi du lieu vao khung trang dich
   }
 
   return 0;
 }
 
 /*
- *Initialize a empty Memory Management instance
+ *Initialize a empty Memory Management instance	 // Khoi tao mot quan ly bo nho trong
  * @mm:     self mm
  * @caller: mm owner
  */
 int init_mm(struct mm_struct *mm, struct pcb_t *caller)
 {
-  struct vm_area_struct * vma0 = malloc(sizeof(struct vm_area_struct));
+	// Tao 2 vung VMA, data hoac heap
+  struct vm_area_struct * vma0 = malloc(sizeof(struct vm_area_struct));			
   struct vm_area_struct * vma1 = malloc(sizeof(struct vm_area_struct));
 
-  mm->pgd = malloc(PAGING_MAX_PGN*sizeof(uint32_t));
-
+  mm->pgd = malloc(PAGING_MAX_PGN*sizeof(uint32_t));	// Cap phat bang phan trang cho trinh quan ly bo nho
+	
   /* By default the owner comes with at least one vma for DATA */
   vma0->vm_id = 0;
   vma0->vm_start = 0;
@@ -229,28 +246,29 @@ int init_mm(struct mm_struct *mm, struct pcb_t *caller)
 
   /* TODO update VMA0 next */
   // vma0->next = ...
-
+  vma0->vm_next = vma1;
   /* TODO: update one vma for HEAP */
-  // vma1->vm_id = ...
-  // vma1->vm_start = ...
-  // vma1->vm_end = ...
-  // vma1->sbrk = ...
-  // enlist_vm_rg_node(&vma1...)
-  // vma1->vm_next
-  // enlist_vm_rg_node(&vma1->vm_freerg_list,...)
-
+  // vma1->vm_id = 1;
+  // vma1->vm_start = ???; 
+  // vma1->vm_end = vma1->vm_start;
+  // vma1->sbrk = vma1->vm_start;
+  // struct vm_rg_struct *heap_rg = init_vm_rg(vma1->vm_start, vma1->vm_end, 1);
+  // enlist_vm_rg_node(&vma1->vm_freerg_list, heap_rg);
   /* Point vma owner backward */
+  // Lien ket VMA voi trinh quan ly bo nho
   vma0->vm_mm = mm; 
   vma1->vm_mm = mm;
 
   /* TODO: update mmap */
   //mm->mmap = ...
+  mm->mmap = vma0;
 
   return 0;
 }
 
-struct vm_rg_struct* init_vm_rg(int rg_start, int rg_end, int vmaid)
+struct vm_rg_struct* init_vm_rg(int rg_start, int rg_end, int vmaid)	// Khoi tao mot vung anh xa bo nho ao
 {
+	// vmaid : ID cua VMA so huu vung anh xa
   struct vm_rg_struct *rgnode = malloc(sizeof(struct vm_rg_struct));
 
   rgnode->rg_start = rg_start;
@@ -261,15 +279,17 @@ struct vm_rg_struct* init_vm_rg(int rg_start, int rg_end, int vmaid)
   return rgnode;
 }
 
-int enlist_vm_rg_node(struct vm_rg_struct **rglist, struct vm_rg_struct* rgnode)
+int enlist_vm_rg_node(struct vm_rg_struct **rglist, struct vm_rg_struct* rgnode) // Them mot nut vung anh xa vao danh sach cac vung anh xa
+// Khi mot vung bo nho ao moi duoc tao ra va can duoc them vao danh sach quan ly cua tien trinh
 {
+	// rglist : Danh sach cac vung anh xa hien co
   rgnode->rg_next = *rglist;
   *rglist = rgnode;
 
   return 0;
 }
 
-int enlist_pgn_node(struct pgn_t **plist, int pgn)
+int enlist_pgn_node(struct pgn_t **plist, int pgn) // Them mot nut so trang vao danh sach fifo cac trang da duoc su dung
 {
   struct pgn_t* pnode = malloc(sizeof(struct pgn_t));
 
@@ -280,7 +300,7 @@ int enlist_pgn_node(struct pgn_t **plist, int pgn)
   return 0;
 }
 
-int print_list_fp(struct framephy_struct *ifp)
+int print_list_fp(struct framephy_struct *ifp)	 // In ra danh sach cac khung trang vat ly
 {
    struct framephy_struct *fp = ifp;
  
@@ -296,7 +316,7 @@ int print_list_fp(struct framephy_struct *ifp)
    return 0;
 }
 
-int print_list_rg(struct vm_rg_struct *irg)
+int print_list_rg(struct vm_rg_struct *irg) // In ra danh sach cac  vung anh xa bo nho ao
 {
    struct vm_rg_struct *rg = irg;
  
@@ -312,7 +332,7 @@ int print_list_rg(struct vm_rg_struct *irg)
    return 0;
 }
 
-int print_list_vma(struct vm_area_struct *ivma)
+int print_list_vma(struct vm_area_struct *ivma) // In ra danh sach cac vung bo nho ao
 {
    struct vm_area_struct *vma = ivma;
  
@@ -328,7 +348,7 @@ int print_list_vma(struct vm_area_struct *ivma)
    return 0;
 }
 
-int print_list_pgn(struct pgn_t *ip)
+int print_list_pgn(struct pgn_t *ip)	// In ra danh sach cac so trang trong fifo
 {
    printf("print_list_pgn: ");
    if (ip == NULL) {printf("NULL list\n"); return -1;}
@@ -342,7 +362,7 @@ int print_list_pgn(struct pgn_t *ip)
    return 0;
 }
 
-int print_pgtbl(struct pcb_t *caller, uint32_t start, uint32_t end)
+int print_pgtbl(struct pcb_t *caller, uint32_t start, uint32_t end) // In bang trang cua mot quy trinh cu the trong mot pham vi nhat dinh
 {
   int pgn_start,pgn_end;
   int pgit;

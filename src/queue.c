@@ -17,20 +17,21 @@ struct pcb_t * dequeue(struct queue_t * q) {
         /* TODO: return a pcb whose prioprity is the highest
          * in the queue [q] and remember to remove it from q
          * */
-        if(empty(q)) return NULL;
+        // if(empty(q)) return NULL;
         struct pcb_t * target_proc = NULL;   // pcb can deqeueu
-        uint8_t target_index = 0;       // Vi tri cua pcb
-        uint32_t min_priority_val = q->proc[0]->priority; // gia tri priorty nho nhat
-        // Tim proc co gia tri priority nho nhat
-        for(uint8_t i = 0; i < q->size; i++){
-                if(q->proc[i]->priority < min_priority_val) {
-                        min_priority_val = q->proc[i]->priority;
-                        target_index = i;
-                }
-        }
-        target_proc = q->proc[target_index];    // pcb tra ve
+        // uint8_t target_index = 0;       // Vi tri cua pcb
+        // uint32_t min_priority_val = q->proc[0]->priority; // gia tri priorty nho nhat
+        // // Tim proc co gia tri priority nho nhat
+        // for(uint8_t i = 0; i < q->size; i++){
+        //         if(q->proc[i]->priority < min_priority_val) {
+        //                 min_priority_val = q->proc[i]->priority;
+        //                 target_index = i;
+        //         }
+        // }
+        target_proc = q->proc[0];    // pcb tra ve
         // Xoa pcb khoi queue
-        for(int i = target_index; i< q->size -1; i++){
+        int i;
+        for( i= 0; i< q->size -1; i++){
                 q->proc[i] = q->proc[i+1];
         }
         q->size --;
