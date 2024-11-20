@@ -21,10 +21,10 @@ struct pgn_t{  // Quan ly danh sach cac so trang (Page number)
 struct vm_rg_struct { 		
    int vmaid; // Id vung bo nho
 
-   unsigned long rg_start; // Dia chi bat dau vung nho tu do
+   unsigned long rg_start; // Dia chi bat dau vung nho lien tuc
    unsigned long rg_end;	// Dia chi ket thuc
 
-   struct vm_rg_struct *rg_next; // Con tro toi vung bo nho tu do tiep theo
+   struct vm_rg_struct *rg_next; // Con tro toi vung bo nho lien tuc tiep theo
 };
 
 /*

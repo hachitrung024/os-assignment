@@ -88,18 +88,17 @@ int vmap_page_range(struct pcb_t *caller, // process call  (Tien trinh yeu cau a
   //uint32_t * pte = malloc(sizeof(uint32_t));
   // struct framephy_struct *fpit = malloc(sizeof(struct framephy_struct));
   struct framephy_struct *fpit = frames;
-
   //int  fpn;
   int pgit = 0; // Bien lap qua tung trang
   int pgn = PAGING_PGN(addr); // Chi so trang ao bat dau
 
 
-    /* TODO: update the rg_end and rg_start of ret_rg 
+    /* TODO: update the rg_end and rg_start of ret_rg   (Tao ra 1 vung bo nho lien tuc)
   */
   ret_rg->rg_start = addr;
-  ret_rg->rg_end =  addr + pgnum * PAGE_SIZE;
-  ret_rg->vmaid = caller->mm->mmap->vm_id;
-
+  ret_rg->rg_end =  addr + pgnum * PAGE_SIZE;	
+  ret_rg->vmaid = caller->mm->mmap->vm_id;		// Id cua mot vung nho lien tuc chinh la id cua vung nho ao chua no
+	
   // fpit->fp_next = frames;
   // struct framephy_struct * dummy = fpit;
   // fpit=fpit->fp_next;
@@ -111,27 +110,28 @@ int vmap_page_range(struct pcb_t *caller, // process call  (Tien trinh yeu cau a
     int fpn = fpit->fpn;
     pte_set_fpn(pte, fpn); // Anh xa so trang voi khung trang
     fpit = fpit->fp_next;
+    enlist_pgn_node(&caller->mm->fifo_pgn, pgn+pgit);
   }
    /* Tracking for later page replacement activities (if needed)
     * Enqueue new usage page */
-  enlist_pgn_node(&caller->mm->fifo_pgn, pgn+pgit);
+  
   // free(dummy);
   return 0;
 }
 
 /* 
  * alloc_pages_range - allocate req_pgnum of frame in ram
- * @caller    : caller
- * @req_pgnum : request page num
- * @frm_lst   : frame list
+ * @caller    : caller	(Tien trinh yeu cau cap)
+ * @req_pgnum : request page num (So luong khung yeu cau)
+ * @frm_lst   : frame list	 (Danh sach cac khung trang da duoc cap)
+ * Danh sach cac vung nho da su dung duoc dinh nghia trong memphy_strct (struct framephy_struct *used_fp_list)
  */
 
-int alloc_pages_range(struct pcb_t *caller, int req_pgnum, struct framephy_struct** frm_lst)	// Cap phat mot pham vi cac khung trang trong ram
+int alloc_pages_range(struct pcb_t *caller, int req_pgnum, struct framephy_struct** frm_lst)	
+// Cap phat mot pham vi cac khung trang trong ram
 {
   int pgit, fpn;
   struct framephy_struct *newfp_str;
-
-
   /* TODO: allocate the page 
   //caller-> ...
   //frm_lst-> ...
@@ -143,11 +143,12 @@ int alloc_pages_range(struct pcb_t *caller, int req_pgnum, struct framephy_struc
    {
     //Lay them khung trang tu danh sach co san
      newfp_str = caller->mram->free_fp_list;
-     caller->mram->free_fp_list = newfp_str->fp_next;	// Dua con tro toi khung trang free ke tiep
+     caller->mram->free_fp_list = newfp_str->fp_next;	
     //Gan so khung trang vao newfp, va lien ket vao danh sach
     newfp_str->fpn = fpn; 
     newfp_str->fp_next = *frm_lst;
     *frm_lst = newfp_str;
+    // Them khung trang vua duoc cap phat vao dau danh sach khung tranh duoc cap cho chuong trinh
    } else {  // ERROR CODE of obtaining somes but not enough frames
       return -1;
    } 
@@ -158,13 +159,13 @@ int alloc_pages_range(struct pcb_t *caller, int req_pgnum, struct framephy_struc
 
 
 /* 
- * vm_map_ram - do the mapping all vm are to ram storage device			(Thuc hien anh xa tat ca vung ao vao thiet bi luu tru trang)
- * @caller    : caller
- * @astart    : vm area start
- * @aend      : vm area end
- * @mapstart  : start mapping point
- * @incpgnum  : number of mapped page
- * @ret_rg    : returned region
+ * vm_map_ram - do the mapping all vm are to ram storage device			(Anh xa mot vung bo nho ao lien tuc vao bo nho vat ly )
+ * @caller    : caller		(Tien trinh yeu cau anh xa)
+ * @astart    : vm area start	(Dia chi bat dau vung bo nho can anh xa)
+ * @aend      : vm area end		(Dia chi ket thuc vung bo nho can anh xa)
+ * @mapstart  : start mapping point	(Diem bat dau trong bo nho vat ly noi cac bo nho ao se duoc anh xa)
+ * @incpgnum  : number of mapped page	(So luong trang can anh xa)
+ * @ret_rg    : returned region			(Chua thong tin ve vung bo nho ao da anh xa)
  */
 int vm_map_ram(struct pcb_t *caller, int astart, int aend, int mapstart, int incpgnum, struct vm_rg_struct *ret_rg)
 {
@@ -178,8 +179,9 @@ int vm_map_ram(struct pcb_t *caller, int astart, int aend, int mapstart, int inc
    *in endless procedure of swap-off to get frame and we have not provide 
    *duplicate control mechanism, keep it simple
    */
-  ret_alloc = alloc_pages_range(caller, incpgnum, &frm_lst);	// Cap phat khung trang vat li can thiet	
-
+  ret_alloc = alloc_pages_range(caller, incpgnum, &frm_lst);
+  	// Cap phat khung trang vat li can thiet, cac khung dung de anh xa duoc luu o frm_lst
+	// frm_lst : Danh sach cac khung vat ly da duoc su dung
   if (ret_alloc < 0 && ret_alloc != -3000)
     return -1;
 
@@ -194,6 +196,7 @@ int vm_map_ram(struct pcb_t *caller, int astart, int aend, int mapstart, int inc
 
   /* it leaves the case of memory is enough but half in ram, half in swap
    * do the swaping all to swapper to get the all in ram */
+	// Goi ham anh xa voi vung anh xa va vung dia chi vat ly da xac dinh truoc
   vmap_page_range(caller, mapstart, incpgnum, frm_lst, ret_rg);
 
   return 0;
@@ -270,7 +273,6 @@ struct vm_rg_struct* init_vm_rg(int rg_start, int rg_end, int vmaid)	// Khoi tao
 {
 	// vmaid : ID cua VMA so huu vung anh xa
   struct vm_rg_struct *rgnode = malloc(sizeof(struct vm_rg_struct));
-
   rgnode->rg_start = rg_start;
   rgnode->rg_end = rg_end;
   rgnode->vmaid = vmaid;
@@ -285,7 +287,7 @@ int enlist_vm_rg_node(struct vm_rg_struct **rglist, struct vm_rg_struct* rgnode)
 	// rglist : Danh sach cac vung anh xa hien co
   rgnode->rg_next = *rglist;
   *rglist = rgnode;
-
+	
   return 0;
 }
 
