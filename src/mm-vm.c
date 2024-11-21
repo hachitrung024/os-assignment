@@ -87,7 +87,6 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
 {
   /*Allocate at the toproof */
   struct vm_rg_struct rgnode;
-
   /* TODO: commit the vmaid */
   rgnode.vmaid = vmaid;
 
@@ -534,13 +533,18 @@ int find_victim_page(struct mm_struct *mm, int *retpgn)
   if(pg == NULL){
     return -1;
   }
-  // Nan nhan la trong dau tien trong FIFO
+  // Tai vi fifo them dau nen phai xoa cuoi 
+  struct pgn_t * prev = NULL;
+  while (pg->pg_next != NULL){
+    prev = pg;
+    pg = pg->pg_next;
+  }
+  if(prev != NULL){
+    prev->pg_next = NULL;
+  }
+
   *retpgn = pg->pgn;
-
-  mm->fifo_pgn = pg->pg_next;
-
   free(pg);
-
   return 0;
 }
 

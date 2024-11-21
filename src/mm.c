@@ -85,37 +85,29 @@ int vmap_page_range(struct pcb_t *caller, // process call  (Tien trinh yeu cau a
            struct framephy_struct *frames,// list of the mapped frames (Danh sach khung trang vat ly duoc anh xa)
               struct vm_rg_struct *ret_rg)// return mapped region, the real mapped fp (Tra ve vung anh xa)
 {                                         // no guarantee all given pages are mapped
-  //uint32_t * pte = malloc(sizeof(uint32_t));
-  // struct framephy_struct *fpit = malloc(sizeof(struct framephy_struct));
-  struct framephy_struct *fpit = frames;
-  //int  fpn;
-  int pgit = 0; // Bien lap qua tung trang
-  int pgn = PAGING_PGN(addr); // Chi so trang ao bat dau
-
-
-    /* TODO: update the rg_end and rg_start of ret_rg   (Tao ra 1 vung bo nho lien tuc)
+  struct framephy_struct *fpit = frames;  // Con tro di chuyen trong danh sach trang can anh xa (frames)
+  int pgn = PAGING_PGN(addr);             // pgn cua trang dau tien trong danh sach (tai dia chi bat dau)
+  /* TODO: update the rg_end and rg_start of ret_rg   (Tao ra 1 vung bo nho lien tuc)
   */
   ret_rg->rg_start = addr;
   ret_rg->rg_end =  addr + pgnum * PAGE_SIZE;	
-  ret_rg->vmaid = caller->mm->mmap->vm_id;		// Id cua mot vung nho lien tuc chinh la id cua vung nho ao chua no
+
+  ret_rg->vmaid = caller->mm->mmap->vm_id;  // Id cua mot vung nho lien tuc chinh la id cua vung nho ao chua no
 	
-  // fpit->fp_next = frames;
-  // struct framephy_struct * dummy = fpit;
-  // fpit=fpit->fp_next;
   /* TODO map range of frame to address space 
    *      in page table pgd in caller->mm
    */
-  for (;pgit < pgnum; pgit ++) {
-    uint32_t * pte = &caller->mm->pgd[pgn + pgit];  // Lay pte cua trang hien tai (pgit)
-    int fpn = fpit->fpn;
-    pte_set_fpn(pte, fpn); // Anh xa so trang voi khung trang
-    fpit = fpit->fp_next;
+  int pgit;
+  for (pgit = 0 ;pgit < pgnum; pgit ++) 
+  {
+    uint32_t * pte = &caller->mm->pgd[pgn + pgit];  // Lay pte cua trang hien tai (lay tu page table[pgn])
+    int fpn = fpit->fpn;    // Lay so khung cua trang vat ly tu danh sach frames (fpit->fpn)
+    pte_set_fpn(pte, fpn);  // Dat fpn vao pte de anh xa
     enlist_pgn_node(&caller->mm->fifo_pgn, pgn+pgit);
+    fpit = fpit->fp_next;   // Di chuyen den frames tiep theo
   }
    /* Tracking for later page replacement activities (if needed)
     * Enqueue new usage page */
-  
-  // free(dummy);
   return 0;
 }
 
@@ -291,7 +283,7 @@ int enlist_vm_rg_node(struct vm_rg_struct **rglist, struct vm_rg_struct* rgnode)
   return 0;
 }
 
-int enlist_pgn_node(struct pgn_t **plist, int pgn) // Them mot nut so trang vao danh sach fifo cac trang da duoc su dung
+int enlist_pgn_node(struct pgn_t **plist, int pgn)
 {
   struct pgn_t* pnode = malloc(sizeof(struct pgn_t));
 
