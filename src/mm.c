@@ -90,10 +90,8 @@ int vmap_page_range(struct pcb_t *caller, // process call  (Tien trinh yeu cau a
   /* TODO: update the rg_end and rg_start of ret_rg   (Tao ra 1 vung bo nho lien tuc)
   */
   ret_rg->rg_start = addr;
-  ret_rg->rg_end =  addr + pgnum * PAGE_SIZE;	
-
-  ret_rg->vmaid = caller->mm->mmap->vm_id;  // Id cua mot vung nho lien tuc chinh la id cua vung nho ao chua no
-	
+  ret_rg->rg_end = addr + pgnum * PAGING_PAGESZ;	
+  	
   /* TODO map range of frame to address space 
    *      in page table pgd in caller->mm
    */
@@ -138,6 +136,7 @@ int alloc_pages_range(struct pcb_t *caller, int req_pgnum, struct framephy_struc
      caller->mram->free_fp_list = newfp_str->fp_next;	
     //Gan so khung trang vao newfp, va lien ket vao danh sach
     newfp_str->fpn = fpn; 
+    newfp_str->owner = caller->mm;
     newfp_str->fp_next = *frm_lst;
     *frm_lst = newfp_str;
     // Them khung trang vua duoc cap phat vao dau danh sach khung tranh duoc cap cho chuong trinh
@@ -236,19 +235,17 @@ int init_mm(struct mm_struct *mm, struct pcb_t *caller)
   vma0->vm_start = 0;
   vma0->vm_end = vma0->vm_start;
   vma0->sbrk = vma0->vm_start;
-  struct vm_rg_struct *first_rg = init_vm_rg(vma0->vm_start, vma0->vm_end, 0);
-  enlist_vm_rg_node(&vma0->vm_freerg_list, first_rg);
+  vma0->vm_freerg_list=NULL;
 
   /* TODO update VMA0 next */
   // vma0->next = ...
   vma0->vm_next = vma1;
   /* TODO: update one vma for HEAP */
-  // vma1->vm_id = 1;
-  // vma1->vm_start = ???; 
-  // vma1->vm_end = vma1->vm_start;
-  // vma1->sbrk = vma1->vm_start;
-  // struct vm_rg_struct *heap_rg = init_vm_rg(vma1->vm_start, vma1->vm_end, 1);
-  // enlist_vm_rg_node(&vma1->vm_freerg_list, heap_rg);
+  vma1->vm_id = 1;
+  vma1->vm_start = caller->vmemsz;
+  vma1->vm_end = vma1->vm_start;
+  vma1->sbrk = vma1->vm_start;
+  vma1->vm_freerg_list = NULL;
   /* Point vma owner backward */
   // Lien ket VMA voi trinh quan ly bo nho
   vma0->vm_mm = mm; 
@@ -352,7 +349,7 @@ int print_list_pgn(struct pgn_t *ip)	// In ra danh sach cac so trang trong fifo
        printf("va[%d]-\n",ip->pgn);
        ip = ip->pg_next;
    }
-   printf("n");
+   printf("\n");
    return 0;
 }
 

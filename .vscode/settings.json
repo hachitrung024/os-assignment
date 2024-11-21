@@ -5,6 +5,9 @@
         "sched.h": "c",
         "queue.h": "c",
         "stdio.h": "c",
-        "common.h": "c"
+        "common.h": "c",
+        "mm.h": "c",
+        "cpu.h": "c",
+        "string.h": "c"
     }
 }

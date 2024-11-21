@@ -5,7 +5,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/os",
-            "args": ["os_1_singleCPU_mlq_paging"],
+            "args": ["mem"],
             "stopAtEntry": false,
             "cwd": "/home/trungha/os-assignment",
             "environment": [],

@@ -19,18 +19,34 @@ rg_elmt : Vung nho duoc giai phong
 mm_struct: Cau truc quan ly bo nho
 mm_struct->mmap->vm_freerg_list: Danh sach cac vung nho tu do
  */
-int enlist_vm_freerg_list(struct mm_struct *mm, struct vm_rg_struct rg_elmt) 
+int enlist_vm_freerg_list(struct mm_struct *mm, struct vm_rg_struct * rg_elmt) 
 {
-  struct vm_rg_struct *rg_node = mm->mmap->vm_freerg_list;
+  struct vm_area_struct * cur_vma = get_vma_by_num(mm, rg_elmt->vmaid);
+  struct vm_rg_struct *rg_node = cur_vma->vm_freerg_list;
 
-  if (rg_elmt.rg_start >= rg_elmt.rg_end)
+  if (rg_elmt->rg_start >= rg_elmt->rg_end)
     return -1;
+  while(rg_node != NULL){
+    if(rg_node->vmaid == rg_elmt->vmaid){
 
-  if (rg_node != NULL)
-    rg_elmt.rg_next = rg_node;
+      if(rg_node->rg_start == rg_elmt->rg_end){
+        rg_node->rg_start = rg_elmt->rg_start;
+        free(rg_elmt);
+        return 0;
+      }
+      if(rg_node->rg_end == rg_elmt->rg_start){
+        rg_node->rg_end = rg_elmt->rg_end;
+        free(rg_elmt);
+        return 0;
+      }
+    }
+    rg_node = rg_node->rg_next;
+  }
+
 
   /* Enlist the new region */
-  mm->mmap->vm_freerg_list = &rg_elmt;
+  rg_elmt->rg_next = cur_vma->vm_freerg_list;
+  cur_vma->vm_freerg_list = rg_elmt;
 
   return 0;
 }
@@ -116,7 +132,9 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
 
   /* TODO retrive old_sbrk if needed, current comment out due to compiler redundant warning*/
   int old_sbrk = cur_vma->sbrk;
-
+  if(vmaid == 1){
+    cur_vma->sbrk -= inc_sz;
+  }
   /* TODO INCREASE THE LIMIT
    * inc_vma_limit(caller, vmaid, inc_sz)
    */
@@ -125,7 +143,12 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
     return -1;
   }
   /* TODO: commit the limit increment */
-
+  if(vmaid == 1){
+    cur_vma->vm_start -= inc_limit_ret;
+  }else {
+    cur_vma->vm_end += inc_limit_ret;
+    cur_vma->sbrk += inc_limit_ret;
+  }
   /* TODO: commit the allocation address 
   // *alloc_addr = ...
   */
@@ -154,22 +177,14 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
  */
 int __free(struct pcb_t *caller, int rgid)
 {
-  struct vm_rg_struct rgnode;
-
-  // Dummy initialization for avoding compiler dummy warning
-  // in incompleted TODO code rgnode will overwrite through implementing
-  // the manipulation of rgid later
-  rgnode.vmaid = 0;  //dummy initialization
-  rgnode.vmaid = 1;  //dummy initialization
-
   if(rgid < 0 || rgid > PAGING_MAX_SYMTBL_SZ)
     return -1;
 
+  struct vm_rg_struct * rgnode = malloc(sizeof(struct vm_rg_struct));
+  rgnode->rg_start = caller->mm->symrgtbl[rgid].rg_start;
+  rgnode->rg_end =caller->mm->symrgtbl[rgid].rg_end;
+  rgnode->vmaid = caller->mm->symrgtbl[rgid].vmaid;
   /* TODO: Manage the collect freed region to freerg_list */
-  // Lay vung nho tu rgid
-  rgnode.rg_start = caller->mm->symrgtbl[rgid].rg_start;
-  rgnode.rg_end = caller->mm->symrgtbl[rgid].rg_end;
-  rgnode.vmaid = caller->mm->symrgtbl[rgid].vmaid;
   //Cap nhat thong tin ve vung nho da giai phong
   caller->mm->symrgtbl[rgid].rg_start = -1;
   caller->mm->symrgtbl[rgid].rg_end = -1;
@@ -259,7 +274,7 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
     pte_set_swap(&mm->pgd[vicpgn], 0, swpfpn);
 
     /* Update its online status of the target page */
-    pte_set_fpn(&pte, tgtfpn);
+    pte_set_fpn(&pte, vicpgn);
     // Them trang vao hang doi fifo
     enlist_pgn_node(&caller->mm->fifo_pgn,pgn);
   }
@@ -445,8 +460,10 @@ struct vm_rg_struct* get_vm_area_node_at_brk(struct pcb_t *caller, int vmaid, in
   newrg = malloc(sizeof(struct vm_rg_struct));
   if(newrg == NULL) return NULL;
   struct vm_area_struct * cur_vma = get_vma_by_num(caller->mm, vmaid);
+  // TODO: update the newrg boundary
   newrg->rg_start = cur_vma->sbrk;
   newrg->rg_end = newrg->rg_start + alignedsz;
+  newrg->vmaid = vmaid;
 
 
   return newrg;
@@ -492,12 +509,11 @@ int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, int vmastart, int 
 int inc_vma_limit(struct pcb_t *caller, int vmaid, int inc_sz, int* inc_limit_ret)
 {
   struct vm_rg_struct * newrg = malloc(sizeof(struct vm_rg_struct));
-  int inc_amt = PAGING_PAGE_ALIGNSZ(inc_sz);
-  int incnumpage =  inc_amt / PAGING_PAGESZ;
+  int inc_amt = PAGING_PAGE_ALIGNSZ(inc_sz); // Can chinh cho dung dia chi trang
+  int incnumpage =  inc_amt / PAGING_PAGESZ; // So trang nho can cap phat
   struct vm_rg_struct *area = get_vm_area_node_at_brk(caller, vmaid, inc_sz, inc_amt);
-  struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, vmaid);
 
-  int old_end = cur_vma->vm_end;
+  int old_end = area->rg_start;
 
   /*Validate overlap of obtained region */
   /*Kiem tra trung lap vung nho */
@@ -506,16 +522,12 @@ int inc_vma_limit(struct pcb_t *caller, int vmaid, int inc_sz, int* inc_limit_re
 
   /* TODO: Obtain the new vm area based on vmaid */
   /* Cap nhat gioi han moi va kich thuoc vung cap phat da mo rong*/
-  cur_vma->vm_end = area->rg_end;
   * inc_limit_ret = inc_amt;
-  cur_vma->sbrk += inc_amt;
-
-
   /* Anh xa vung nho moi vao RAM*/
   if (vm_map_ram(caller, area->rg_start, area->rg_end, 
                     old_end, incnumpage , newrg) < 0)
     return -1; /* Map the memory to MEMRAM */
-
+  enlist_vm_freerg_list(caller->mm, area);
   return 0;
 
 }
@@ -571,13 +583,17 @@ int get_free_vmrg_area(struct pcb_t *caller, int vmaid, int size, struct vm_rg_s
   {
     if (rgit->rg_start + size <= rgit->rg_end)
     { /* Current region has enough space */
-      newrg->rg_start = rgit->rg_start;
-      newrg->rg_end = rgit->rg_start + size;
+      newrg->rg_start = vmaid ==1 ? rgit->rg_end - size : rgit->rg_start;
+      newrg->rg_end = newrg->rg_start + size;
 
       /* Update left space in chosen region */
       if (rgit->rg_start + size < rgit->rg_end)
       {
-        rgit->rg_start = rgit->rg_start + size;
+        if(vmaid == 1){
+          rgit->rg_end = rgit->rg_end - size;
+        }else {
+          rgit->rg_start = rgit->rg_start + size;
+        }
       }
       else
       { /*Use up all space, remove current node */
@@ -600,6 +616,7 @@ int get_free_vmrg_area(struct pcb_t *caller, int vmaid, int size, struct vm_rg_s
           rgit->rg_next = NULL;
         }
       }
+      break;
     }
     else
     {
