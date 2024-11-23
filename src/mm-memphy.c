@@ -168,12 +168,13 @@ int MEMPHY_dump(struct memphy_struct * mp)
     /*TODO dump memphy content mp->storage 
      *     for tracing the memory content
      */
-   // if(mp == NULL || mp->storage == NULL) return -1;
-   // printf("MEMPHY_dump:\n");
-   // for(int i = 0; i< 256 ; i ++){
-   //    printf("%d", mp->storage[i]);
-   // }
-   // printf("\n");
+   if(mp == NULL || mp->storage == NULL) return -1;
+   printf("MEMPHY_dump:\n");
+   for (int i = 0; i < mp->maxsz; i++) {
+        if (mp->storage[i] != 0) { // Chỉ in index có dữ liệu
+            printf("Index %d: %d\n", i, mp->storage[i]);
+        }
+    }
 
    return 0;
 }

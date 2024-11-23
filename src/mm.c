@@ -90,7 +90,7 @@ int vmap_page_range(struct pcb_t *caller, // process call  (Tien trinh yeu cau a
   /* TODO: update the rg_end and rg_start of ret_rg   (Tao ra 1 vung bo nho lien tuc)
   */
   ret_rg->rg_start = addr;
-  ret_rg->rg_end = addr + pgnum * PAGING_PAGESZ;	
+  ret_rg->rg_end = addr + pgnum * PAGING_PAGESZ - 1;	
   	
   /* TODO map range of frame to address space 
    *      in page table pgd in caller->mm
@@ -232,9 +232,9 @@ int init_mm(struct mm_struct *mm, struct pcb_t *caller)
 	
   /* By default the owner comes with at least one vma for DATA */
   vma0->vm_id = 0;
-  vma0->vm_start = 0;
+  vma0->vm_start = -1;
   vma0->vm_end = vma0->vm_start;
-  vma0->sbrk = vma0->vm_start;
+  vma0->sbrk = vma0->vm_end + 1;
   vma0->vm_freerg_list=NULL;
 
   /* TODO update VMA0 next */
@@ -242,9 +242,9 @@ int init_mm(struct mm_struct *mm, struct pcb_t *caller)
   vma0->vm_next = vma1;
   /* TODO: update one vma for HEAP */
   vma1->vm_id = 1;
-  vma1->vm_start = caller->vmemsz;
+  vma1->vm_start = caller->vmemsz - 1;
   vma1->vm_end = vma1->vm_start;
-  vma1->sbrk = vma1->vm_start;
+  vma1->sbrk = vma1->vm_start + 1;
   vma1->vm_freerg_list = NULL;
   /* Point vma owner backward */
   // Lien ket VMA voi trinh quan ly bo nho
@@ -316,7 +316,7 @@ int print_list_rg(struct vm_rg_struct *irg) // In ra danh sach cac  vung anh xa 
    printf("\n");
    while (rg != NULL)
    {
-       printf("rg[%ld->%ld<at>vma=%d]\n",rg->rg_start, rg->rg_end, rg->vmaid);
+       printf("rg[%ld->%ld<at>vma=%d](size=%ld)\n",rg->rg_start, rg->rg_end, rg->vmaid,rg->rg_end - rg->rg_start + 1);
        rg = rg->rg_next;
    }
    printf("\n");
@@ -363,6 +363,7 @@ int print_pgtbl(struct pcb_t *caller, uint32_t start, uint32_t end) // In bang t
     struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, 0);
     end = cur_vma->vm_end;
   }
+  end++;
   pgn_start = PAGING_PGN(start);
   pgn_end = PAGING_PGN(end);
 
@@ -375,6 +376,23 @@ int print_pgtbl(struct pcb_t *caller, uint32_t start, uint32_t end) // In bang t
   {
      printf("%08ld: %08x\n", pgit * sizeof(uint32_t), caller->mm->pgd[pgit]);
   }
+  #ifdef VMDBG
+  struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, 1);
+  if(cur_vma->vm_freerg_list == NULL) return 0;
+  start = cur_vma->vm_start;
+  end = cur_vma->vm_end;
+  end++;
+  pgn_start = PAGING_PGN(start);
+  pgn_end = PAGING_PGN(end);
+
+  printf("HEAP:print_pgtbl: %d - %d", start, end);
+  if (caller == NULL) {printf("NULL caller\n"); return -1;}
+    printf("\n");
+  for(pgit = pgn_start; pgit < pgn_end; pgit++)
+  {
+     printf("%08ld: %08x\n", pgit * sizeof(uint32_t), caller->mm->pgd[pgit]);
+  }
+  #endif
 
   return 0;
 }
