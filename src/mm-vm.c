@@ -136,6 +136,7 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
     int size = rgnode.rg_end - rgnode.rg_start + 1;
     printf("alloc %d rgid=%d [%ld->%ld<at>vma%d] freelist:\n",size ,rgid, rgnode.rg_start, rgnode.rg_end, rgnode.vmaid);
     print_list_rg(cur_vma->vm_freerg_list);
+    print_list_pgn(caller->mm->fifo_pgn);
     #endif //VMDBG
 
     return 0;
@@ -186,6 +187,7 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
   int size = rgnode.rg_end - rgnode.rg_start + 1;
   printf("alloc %d rgid=%d [%ld->%ld<at>vma%d] freelist:\n",size ,rgid, rgnode.rg_start, rgnode.rg_end, rgnode.vmaid);
   print_list_rg(cur_vma->vm_freerg_list);
+  print_list_pgn(caller->mm->fifo_pgn);
   #endif //VMDBG
     return 0;
   }
