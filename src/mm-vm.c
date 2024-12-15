@@ -134,9 +134,9 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
 
     #ifdef VMDBG
     int size = rgnode.rg_end - rgnode.rg_start + 1;
-    printf("alloc %d rgid=%d [%ld->%ld<at>vma%d] freelist:\n",size ,rgid, rgnode.rg_start, rgnode.rg_end, rgnode.vmaid);
+    printf("alloc %d rgid=%d [%ld->%ld<at>vma%d]\nfreelist:",size ,rgid, rgnode.rg_start, rgnode.rg_end, rgnode.vmaid);
     print_list_rg(cur_vma->vm_freerg_list);
-    print_list_pgn(caller->mm->fifo_pgn);
+
     #endif //VMDBG
 
     return 0;
@@ -185,9 +185,9 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
   #ifdef VMDBG
   printf("not enough space, increase vma more %d\n", inc_sz);
   int size = rgnode.rg_end - rgnode.rg_start + 1;
-  printf("alloc %d rgid=%d [%ld->%ld<at>vma%d] freelist:\n",size ,rgid, rgnode.rg_start, rgnode.rg_end, rgnode.vmaid);
+  printf("alloc %d rgid=%d [%ld->%ld<at>vma%d]\nfreelist:",size ,rgid, rgnode.rg_start, rgnode.rg_end, rgnode.vmaid);
   print_list_rg(cur_vma->vm_freerg_list);
-  print_list_pgn(caller->mm->fifo_pgn);
+  print_pgtbl(caller, 0,-1);
   #endif //VMDBG
     return 0;
   }
@@ -215,7 +215,7 @@ int __free(struct pcb_t *caller, int rgid)
   #ifdef VMDBG
   int size = rgnode->rg_end - rgnode->rg_start + 1;
   struct vm_area_struct * cur_vma = get_vma_by_num(caller->mm, rgnode->vmaid);
-  printf("free rgid=%d [%ld->%ld(%d)<at>vma%d] freelist:\n",rgid, rgnode->rg_start, rgnode->rg_end, rgnode->vmaid, size);
+  printf("free rgid=%d [%ld->%ld(%d)<at>vma%d]\nfreelist:",rgid, rgnode->rg_start, rgnode->rg_end,size, rgnode->vmaid);
   #endif //VMDBG
   
   /* TODO: Manage the collect freed region to freerg_list */
