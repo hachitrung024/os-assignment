@@ -34,61 +34,66 @@ enum ins_opcode_t {
 	WRITE	// Read data from a byte on memory
 };
 
-/* instructions executed by the CPU */
+/* instructions executed by the CPU (Cau truc lenh) */
 struct inst_t {
-	enum ins_opcode_t opcode;
-	uint32_t arg_0; // Argument lists for instructions
+	enum ins_opcode_t opcode;  // Ma lenh , xac dinh thao tac ma CPU can thuc hien
+	uint32_t arg_0; // Argument lists for instructions 
 	uint32_t arg_1;
 	uint32_t arg_2;
+	// (arg : cac tham so lenh, tuy thuoc vao lenh co the co 2 den 3 tham so)
 };
 
-struct code_seg_t {
-	struct inst_t * text;
-	uint32_t size;
+/* Phan doan ma */
+struct code_seg_t { 
+	struct inst_t * text;	// Con tro den mot mang cac lenh (inst_t)
+	uint32_t size;			// So luong lenh trong text
 };
 
-struct trans_table_t {
+struct trans_table_t { // Bang anh xa trang (Phan trang 2 lop)
 	/* A row in the page table of the second layer */
+	/* Bang chuyen doi tu dia chi ao sang dia chi vat ly */
 	struct  {
-		addr_t v_index; // The index of virtual address
-		addr_t p_index; // The index of physical address
-	} table[1 << SECOND_LV_LEN];
-	int size;
+		addr_t v_index; // The index of virtual address (Chi so cua trang ao)
+		addr_t p_index; // The index of physical address (Chi so khung trang vat ly)
+	} table[1 << SECOND_LV_LEN]; // Mot mang chua cac muc  trong bang anh xa, moi muc la mot chuyen doi tu bo nho ao sang bo nho vat ly
+	int size; // So luong muc trong bang anh xa
 };
 
 /* Mapping virtual addresses and physical ones */
 struct page_table_t {
 	/* Translation table for the first layer */
+	/* Bang Trang */
 	struct {
-		addr_t v_index;	// Virtual index
-		struct trans_table_t * next_lv;
-	} table[1 << FIRST_LV_LEN];
-	int size;	// Number of row in the first layer
+		addr_t v_index;	// Virtual index (Chi so ao cua vung bo nho ,segment (VD : heap, stack , code))
+		struct trans_table_t * next_lv;  // Con tro den bang anh xa cap thap hon (o day cap thap hon la mot trand_table_t).
+	} table[1 << FIRST_LV_LEN]; // Mang chua cac muc, moi muc la mot con tro den cap thap hon (bang anh xa trans_table_t tuong ung voi segment)
+	int size;	// Number of row in the first layer (So luong Segment)
 };
 
-/* PCB, describe information about a process */
+/* PCB, describe information about a process  (Cau truc PCB)*/
 struct pcb_t {
-	uint32_t pid;	// PID
-	uint32_t priority; // Default priority, this legacy (FIXED) value depend on process itself
-	struct code_seg_t * code;	// Code segment
-	addr_t regs[10]; // Registers, store address of allocated regions
-	uint32_t pc; // Program pointer, point to the next instruction
+	uint32_t pid;	// PID	(ID cua tien trinh)
+	uint32_t priority; // Default priority, this legacy (FIXED) value depend on process itself (Gia tri uu tien mac dinh cua tien trinh)
+	// Gia tri uu tien mac dinh co the bi thay doi boi gia tri uu tien dong (prio)
+	struct code_seg_t * code;	// Code segment (Con tro den phan doan ma cua tien trinh. Noi day chua ma thuc thi)
+	addr_t regs[10]; // Registers, store address of allocated regions (Mang cac thanh ghi, luu tru dia chi cac vung bo nho duoc cap phat cho tien trinh)
+	uint32_t pc; // Program pointer, point to the next instruction	(Con tro chuong trinh , tro toi lenh tiep theo ma CPU thuc thi)
 #ifdef MLQ_SCHED
 	// Priority on execution (if supported), on-fly aka. changeable
 	// and this vale overwrites the default priority when it existed
-	uint32_t prio;     
+	uint32_t prio;     // Gia tri uu tien dong cua tien trinh , gia tri nay co the thay doi gia tri uu tien mac dinh
 #endif
 #ifdef MM_PAGING
-	struct mm_struct *mm;
-	struct memphy_struct *mram;
-	struct memphy_struct **mswp;
-	struct memphy_struct *active_mswp;
+	struct mm_struct *mm; // Con tro den cau truc quan ly bo nho (mm_struct)
+	struct memphy_struct *mram; // Con tro den memphystruct , dai dien bo nho vat ly cua he thong
+	struct memphy_struct **mswp; //Mang con tro den memphystrcut , quan ly cac bo nho thay the (swap)
+	struct memphy_struct *active_mswp; // Con tro den bo nho swap dang hoat dong
 #ifdef MM_PAGING_HEAP_GODOWN
-	uint32_t vmemsz;
+	uint32_t vmemsz;	// Kich thuoc bo nho ao cua tien trinh (Co the chi dai dien cho heap)
 #endif
 #endif
-	struct page_table_t * page_table; // Page table
-	uint32_t bp;	// Break pointer
+	struct page_table_t * page_table; // Page table (Con tro den cau truc quan ly bang trang cua tien trinh)
+	uint32_t bp;	// Break pointer	(Quan ly bo nho heap cua tien trinh)
 
 };
 

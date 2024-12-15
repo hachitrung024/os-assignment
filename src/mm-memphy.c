@@ -6,11 +6,11 @@
 
 #include "mm.h"
 #include <stdlib.h>
-
+#include <stdio.h>
 /*
- *  MEMPHY_mv_csr - move MEMPHY cursor
- *  @mp: memphy struct
- *  @offset: offset
+ *  MEMPHY_mv_csr - move MEMPHY cursor (Di chuyen con tro csr trong bo nho vat ly den dia chi cu the)
+ *  @mp: memphy struct 			(Dai dien cho bo nho vat ly)
+ *  @offset: offset				(So buoc can di chuyen)
  */
 int MEMPHY_mv_csr(struct memphy_struct *mp, int offset)
 {
@@ -27,10 +27,10 @@ int MEMPHY_mv_csr(struct memphy_struct *mp, int offset)
 }
 
 /*
- *  MEMPHY_seq_read - read MEMPHY device
- *  @mp: memphy struct
- *  @addr: address
- *  @value: obtained value
+ *  MEMPHY_seq_read - read MEMPHY device	(Doc du lieu tu bo nho o che do truy cap tuan tu)
+ *  @mp: memphy struct	
+ *  @addr: address							(Dia chi can doc)
+ *  @value: obtained value					(Con tro luu gia tri doc duoc)
  */
 int MEMPHY_seq_read(struct memphy_struct *mp, int addr, BYTE *value)
 {
@@ -47,9 +47,9 @@ int MEMPHY_seq_read(struct memphy_struct *mp, int addr, BYTE *value)
 }
 
 /*
- *  MEMPHY_read read MEMPHY device
- *  @mp: memphy struct
- *  @addr: address
+ *  MEMPHY_read read MEMPHY device			(Doc du lieu tu bo nho vat ly)
+ *  @mp: memphy struct						
+ *  @addr: address							(Dia chi can doc)
  *  @value: obtained value
  */
 int MEMPHY_read(struct memphy_struct * mp, int addr, BYTE *value)
@@ -66,10 +66,10 @@ int MEMPHY_read(struct memphy_struct * mp, int addr, BYTE *value)
 }
 
 /*
- *  MEMPHY_seq_write - write MEMPHY device
+ *  MEMPHY_seq_write - write MEMPHY device				(Ghi du lieu vao bo nho o che do tuan tu)
  *  @mp: memphy struct
  *  @addr: address
- *  @data: written data
+ *  @data: written data									(Du lieu can ghi)
  */
 int MEMPHY_seq_write(struct memphy_struct * mp, int addr, BYTE value)
 {
@@ -87,7 +87,7 @@ int MEMPHY_seq_write(struct memphy_struct * mp, int addr, BYTE value)
 }
 
 /*
- *  MEMPHY_write-write MEMPHY device
+ *  MEMPHY_write-write MEMPHY device					(Ghi du lieu vao bo nho)
  *  @mp: memphy struct
  *  @addr: address
  *  @data: written data
@@ -106,7 +106,7 @@ int MEMPHY_write(struct memphy_struct * mp, int addr, BYTE data)
 }
 
 /*
- *  MEMPHY_format-format MEMPHY device
+ *  MEMPHY_format-format MEMPHY device			(Dinh dang lai bo nho vat ly, tao cac khung trong (free frame list))
  *  @mp: memphy struct
  */
 int MEMPHY_format(struct memphy_struct *mp, int pagesz)
@@ -137,6 +137,11 @@ int MEMPHY_format(struct memphy_struct *mp, int pagesz)
     return 0;
 }
 
+/*
+ *  MEMPHY_get_freefp-get a free frame page			(Lay 1 khung trong tu danh sach)
+ *  @mp: memphy struct
+ *  @retfpn: return fpn of frame page
+ */
 int MEMPHY_get_freefp(struct memphy_struct *mp, int *retfpn)
 {
    struct framephy_struct *fp = mp->free_fp_list;
@@ -154,16 +159,30 @@ int MEMPHY_get_freefp(struct memphy_struct *mp, int *retfpn)
 
    return 0;
 }
-
+/*
+ *  MEMPHY_dump-dump memphy content		(In ra man hinh noi dung bo nho vat ly)
+ *  @mp: memphy struct
+ */
 int MEMPHY_dump(struct memphy_struct * mp)
 {
-    /*TODO dump memphy contnt mp->storage 
+    /*TODO dump memphy content mp->storage 
      *     for tracing the memory content
      */
+   if(mp == NULL || mp->storage == NULL) return -1;
+   printf("MEMPHY_dump:\n");
+   for (int i = 0; i < mp->maxsz; i++) {
+        if (mp->storage[i] != 0) { // Chỉ in index có dữ liệu
+            printf("Index %d: %d\n", i, mp->storage[i]);
+        }
+    }
 
-    return 0;
+   return 0;
 }
 
+/*
+	Dua mot khung tro lai danh sach khung trong
+	fpn : Chi so khung can dua tro lanh danh sach khung trong
+*/
 int MEMPHY_put_freefp(struct memphy_struct *mp, int fpn)
 {
    struct framephy_struct *fp = mp->free_fp_list;
@@ -179,7 +198,10 @@ int MEMPHY_put_freefp(struct memphy_struct *mp, int fpn)
 
 
 /*
- *  Init MEMPHY struct
+ *  Init MEMPHY struct		(Khoi tao cau truc memphy_struct)
+ mp : Cau truc can khoi tao
+ max_size : Kich thuoc toi da cua bo nho
+ randomflg: Co chi dinh che do truy cap (Ngau nhien hoac tuan tuS)
  */
 int init_memphy(struct memphy_struct *mp, int max_size, int randomflg)
 {
